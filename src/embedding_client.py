@@ -162,7 +162,7 @@ class BatchItem(NamedTuple):
 
 class _EmbeddingClient:
     """
-    Embedding client supporting OpenAI and Gemini with chunking and batching support.
+    Embedding client supporting OpenAI, Gemini, and OpenAI-compatible endpoints (Ollama) with chunking and batching support.
     """
 
     def __init__(
@@ -195,6 +195,29 @@ class _EmbeddingClient:
             self.max_embedding_tokens: int = min(max_input_tokens, 2048)
             # Gemini batch size is not documented, using conservative estimate
             self.max_batch_size: int = 100
+        elif self.transport == "openai-compatible":
+            # Support for Ollama and other OpenAI-compatible APIs
+            api_key = config.api_key or settings.LLM.OPENAI_COMPATIBLE_API_KEY or "ollama"
+            base_url = config.base_url or settings.LLM.OPENAI_COMPATIBLE_BASE_URL
+            if not base_url:
+                raise ValueError("OPENAI_COMPATIBLE_BASE_URL is required for openai-compatible provider")
+            self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+            self.max_embedding_tokens = min(max_input_tokens, 8192)
+            self.max_batch_size = 100
+        elif self.transport == "openrouter":
+            api_key = config.api_key or settings.LLM.OPENAI_COMPATIBLE_API_KEY
+            if not api_key:
+                raise ValueError(
+                    "OpenRouter API key (LLM_OPENAI_COMPATIBLE_API_KEY) is required"
+                )
+            base_url = (
+                config.base_url
+                or settings.LLM.OPENAI_COMPATIBLE_BASE_URL
+                or "https://openrouter.ai/api/v1"
+            )
+            self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+            self.max_embedding_tokens = min(max_input_tokens, 8192)
+            self.max_batch_size = 2048  # Same as OpenAI
         else:  # openai
             if not config.api_key:
                 raise ValueError("OpenAI API key is required")

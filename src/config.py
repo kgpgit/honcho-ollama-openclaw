@@ -23,7 +23,7 @@ if not os.getenv("PYTHON_DOTENV_DISABLED"):
 logger = logging.getLogger(__name__)
 
 ModelTransport = Literal["anthropic", "openai", "gemini"]
-EmbeddingTransport = Literal["openai", "gemini"]
+EmbeddingTransport = Literal["openai", "gemini", "openrouter", "openai-compatible"]
 EmbeddingDimensionsMode = Literal["auto", "always", "never"]
 
 # OpenAI-compatible models that reject the `dimensions=` request parameter.
@@ -487,6 +487,15 @@ def _default_embedding_api_key(transport: EmbeddingTransport) -> str | None:
         return settings.LLM.OPENAI_API_KEY
     if transport == "gemini":
         return settings.LLM.GEMINI_API_KEY
+    if transport in ("openai-compatible", "openrouter"):
+        return settings.LLM.OPENAI_COMPATIBLE_API_KEY or "ollama"
+    return None
+
+
+def _default_embedding_base_url(transport: EmbeddingTransport) -> str | None:
+    if transport in ("openai-compatible", "openrouter"):
+        return settings.LLM.OPENAI_COMPATIBLE_BASE_URL or ("https://openrouter.ai/api/v1" if transport == "openrouter" else None)
+    return None
 
 
 def resolve_embedding_model_config(
@@ -715,6 +724,14 @@ class LLMSettings(HonchoSettings):
     ANTHROPIC_BASE_URL: str | None = None
     OPENAI_BASE_URL: str | None = None
     GEMINI_BASE_URL: str | None = None
+    OPENAI_COMPATIBLE_API_KEY: str | None = None
+    OPENAI_COMPATIBLE_BASE_URL: str | None = None
+
+    # Separate vLLM endpoint (for local models)
+    VLLM_API_KEY: str | None = None
+    VLLM_BASE_URL: str | None = None
+
+    EMBEDDING_PROVIDER: Literal["openai", "gemini", "openrouter", "openai-compatible"] = "openai"
 
     # General LLM settings
     DEFAULT_MAX_TOKENS: Annotated[int, Field(default=1000, gt=0, le=100_000)] = 2500
