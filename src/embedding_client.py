@@ -202,6 +202,7 @@ class _EmbeddingClient:
             if not base_url:
                 raise ValueError("OPENAI_COMPATIBLE_BASE_URL is required for openai-compatible provider")
             self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+            self.model = config.model if (config.model and config.model != "text-embedding-3-small") else (settings.LLM.EMBEDDING_MODEL or "nomic-embed-text:latest")
             self.max_embedding_tokens = min(max_input_tokens, 8192)
             self.max_batch_size = 100
         elif self.transport == "openrouter":
